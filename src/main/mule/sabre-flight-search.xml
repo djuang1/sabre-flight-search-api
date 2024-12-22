@@ -231,23 +231,20 @@ output application/json
 	"Authorization" : "Bearer " ++ vars.access_token
 }]]]></http:headers>
         </http:request>
-        <logger level="INFO" doc:name="Logger" doc:id="ca416356-b252-48d4-8ad8-e319ed6af022" />
 		<ee:transform doc:name="Transform Message" doc:id="a9bb6471-9975-4f58-9003-f1dc5d34d8b2">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
-flights: (flatten(payload.groupedItineraryResponse.itineraryGroups.itineraries) map (val1, ind1) -> {
-	itineraryId: val1.id,
-	price: {
-		currency: val1.pricingInformation.fare.totalFare.currency reduce ($$),
-		amount: val1.pricingInformation.fare.totalFare.totalPrice reduce ($$)
-	},
-	legs: val1.legs map (leg_val, leg_ind) -> {
-		schedules: 
-			(flatten((payload.groupedItineraryResponse.legDescs filter ((val2, ind2) -> val2.id == leg_val.ref)).schedules) map (val3, ind3) -> {
-			
+	flights: (flatten(payload.groupedItineraryResponse.itineraryGroups.itineraries) map (val1, ind1) -> {
+		itineraryId: val1.id,
+		price: {
+			currency: val1.pricingInformation.fare.totalFare.currency reduce ($$),
+			amount: val1.pricingInformation.fare.totalFare.totalPrice reduce ($$)
+		},
+		legs: val1.legs map (leg_val, leg_ind) -> {
+			schedules: (flatten((payload.groupedItineraryResponse.legDescs filter ((val2, ind2) -> val2.id == leg_val.ref)).schedules) map (val3, ind3) -> {
 				(flatten(payload.groupedItineraryResponse.scheduleDescs filter ((val4, ind4) -> val4.id == val3.ref)) map (val5, ind5) -> {
 					order: ind3 + 1,
 					elapsedTime: val5.elapsedTime,
@@ -255,21 +252,18 @@ flights: (flatten(payload.groupedItineraryResponse.itineraryGroups.itineraries) 
 					flightNumber: val5.carrier.operating ++ val5.carrier.operatingFlightNumber,
 					departure: {
 						airport: val5.departure.airport,
-						time: val5.departure.time	
+						time: val5.departure.time
 					},
 					arrival: {
 						airport: val5.arrival.airport,
 						time: val5.arrival.time
-					}			
+					}
 				}),
-				//test: flatten(payload.groupedItineraryResponse.scheduleDescs filter ((val4, ind4) -> val4.id == val3.ref)),
-			})		
-		
-		//schedule: leg_ind + 1
-			
-	}
-}) [0 to 4]
-
+			// test: flatten(payload.groupedItineraryResponse.scheduleDescs filter ((val4, ind4) -> val4.id == val3.ref)),
+			})
+		// schedule: leg_ind + 1
+		}
+	})[0 to 2]
 }]]></ee:set-payload>
             </ee:message>
         </ee:transform>
