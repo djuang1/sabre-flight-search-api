@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:bargain-finder-max="http://www.mulesoft.org/schema/mule/bargain-finder-max" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd  http://www.mulesoft.org/schema/mule/bargain-finder-max http://www.mulesoft.org/schema/mule/bargain-finder-max/current/mule-bargain-finder-max.xsd http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd">
+    <http:listener-config name="sabre-flight-search-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8082" protocol="HTTPS">
+            <tls:context>
+                <tls:key-store type="jks" path="keystore.jks" alias="mule" keyPassword="password" password="password" />
+            </tls:context>
+        </http:listener-connection>
+    </http:listener-config>
+    <apikit:config name="sabre-flight-search-config" api="resource::b85b361d-0842-4b70-af37-2723c2c3ae7e:sabre-flight-search:4.0.0:raml:zip:sabre-flight-search.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <http:request-config name="Sabre_Request_Configuration" doc:name="HTTP Request configuration" doc:id="82c8dc34-5a58-48ba-9daf-06722922f8af">
+        <http:request-connection protocol="HTTPS" host="api.cert.platform.sabre.com" port="443" />
+    </http:request-config>
+    <api-gateway:autodiscovery apiId="20126607" ignoreBasePath="true" doc:name="API Autodiscovery" doc:id="f4badaa7-d760-413f-a801-b9e992a5157e" flowRef="sabre-flight-search-main" />
+    <configuration-properties doc:name="Configuration properties" doc:id="3baedb88-44d7-46e3-b0e2-45cea4a004ac" file="config.yaml" />
+    <flow name="sabre-flight-search-main">
+        <http:listener config-ref="sabre-flight-search-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="sabre-flight-search-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="sabre-flight-search-console">
+        <http:listener config-ref="sabre-flight-search-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="sabre-flight-search-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="post:\shop:application\json:sabre-flight-search-config">
+        <set-variable value="#[payload]" doc:name="origPayload" doc:id="a63a7539-5f84-4406-9d88-16696736f5fe" variableName="origPayload" />
+        <ee:transform doc:name="Transform Message" doc:id="6dee5a7f-d337-4726-ad9e-4108a2b32ce4">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="accessTokenV2"><![CDATA[%dw 2.0
+import dw::Crypto
+import toBase64 from dw::core::Binaries
+
+output application/json
+---
+toBase64(toBase64(p('sabre.username')) ++ ":" ++ toBase64(p('sabre.password')))]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <http:request method="POST" doc:name="Get Access Token" doc:id="b74fba43-143f-4da8-9159-7efed378566a" config-ref="Sabre_Request_Configuration" path="/v2/auth/token" target="access_token" targetValue="#[payload.access_token]">
+            <http:body><![CDATA[#[output application/x-www-form-urlencoded
+---
+{
+	"grant_type": "client_credentials"
+}]]]></http:body>
+            <http:headers><![CDATA[#[output application/java
+---
+{
+	"Authorization" : "Basic " ++ vars.accessTokenV2
+}]]]></http:headers>
+        </http:request>
+        <ee:transform doc:name="Transform Message" doc:id="6b560245-641b-4648-826b-bdeaac60a0e8">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "OTA_AirLowFareSearchRQ": {
+    "Version": "5",
+    "POS": {
+      "Source": [
+        {
+          "PseudoCityCode": p('sabre.PCC'),
+          "RequestorID": {
+            "Type": "1",
+            "ID": "1",
+            "CompanyName": {
+              "Code": "TN"
+            }
+          }
+        }
+      ]
+    },
+    "OriginDestinationInformation": [
+      {
+        "DepartureDateTime": payload.departureDate,
+        "OriginLocation": {
+          "LocationCode": payload.origin
+       },
+        "DestinationLocation": {
+          "LocationCode": payload.destination
+        }
+      },
+      {
+        "DepartureDateTime": payload.returnDate,
+        "OriginLocation": {
+          "LocationCode": payload.destination
+        },
+        "DestinationLocation": {
+          "LocationCode": payload.origin
+        }
+      }
+    ],
+    "TravelPreferences": {
+      "MaxStopsQuantity": 1,
+      "VendorPref": [
+        {
+          "Code": "AA"
+        }
+      ]
+    },
+    "TravelerInfoSummary": {
+      "AirTravelerAvail": [
+        {
+          "PassengerTypeQuantity": [
+            {
+              "Code": "ADT",
+              "Quantity": 1
+            }
+          ]
+        }
+      ]
+    }
+  }
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <http:request method="POST" doc:name="Bargin Finder Max" doc:id="9c46b153-e870-4482-ad43-ae56e4eccaf8" config-ref="Sabre_Request_Configuration" path="/v5/offers/shop">
+            <http:headers><![CDATA[#[output application/java
+---
+{
+	"Authorization" : "Bearer " ++ vars.access_token
+}]]]></http:headers>
+        </http:request>
+        <logger level="INFO" doc:name="Logger" doc:id="ca416356-b252-48d4-8ad8-e319ed6af022" />
+		<ee:transform doc:name="Transform Message" doc:id="a9bb6471-9975-4f58-9003-f1dc5d34d8b2">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+flights: (flatten(payload.groupedItineraryResponse.itineraryGroups.itineraries) map (val1, ind1) -> {
+	itineraryId: val1.id,
+	price: {
+		currency: val1.pricingInformation.fare.totalFare.currency reduce ($$),
+		amount: val1.pricingInformation.fare.totalFare.totalPrice reduce ($$)
+	},
+	legs: val1.legs map (leg_val, leg_ind) -> {
+		schedules: 
+			(flatten((payload.groupedItineraryResponse.legDescs filter ((val2, ind2) -> val2.id == leg_val.ref)).schedules) map (val3, ind3) -> {
+			
+				(flatten(payload.groupedItineraryResponse.scheduleDescs filter ((val4, ind4) -> val4.id == val3.ref)) map (val5, ind5) -> {
+					order: ind3 + 1,
+					elapsedTime: val5.elapsedTime,
+					stopCount: val5.stopCount,
+					flightNumber: val5.carrier.operating ++ val5.carrier.operatingFlightNumber,
+					departure: {
+						airport: val5.departure.airport,
+						time: val5.departure.time	
+					},
+					arrival: {
+						airport: val5.arrival.airport,
+						time: val5.arrival.time
+					}			
+				}),
+				//test: flatten(payload.groupedItineraryResponse.scheduleDescs filter ((val4, ind4) -> val4.id == val3.ref)),
+			})		
+		
+		//schedule: leg_ind + 1
+			
+	}
+}) [0 to 4]
+
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+</mule>
